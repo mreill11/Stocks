@@ -1,20 +1,29 @@
 package com.example.matt.stocks;
 
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.widget.EditText;
 
 import com.example.matt.stocks.API.StockAPI;
 import com.example.matt.stocks.Model.Company;
 import com.example.matt.stocks.Model.Quote;
+import com.github.brnunes.swipeablerecyclerview.SwipeableRecyclerViewTouchListener;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import io.realm.Realm;
+import io.realm.RealmObject;
+import io.realm.RealmQuery;
+import io.realm.RealmResults;
 import retrofit.Callback;
 import retrofit.RestAdapter;
 import retrofit.RetrofitError;
@@ -22,54 +31,53 @@ import retrofit.client.Response;
 
 public class MainActivity extends ActionBarActivity {
 
-    private List<Company> companies;
+    private List<Card> companies;
+    private ArrayList<String> symbols;
+
+    RecyclerView rv;
+    RVAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Thread.setDefaultUncaughtExceptionHandler(new ExceptionHandler());
         setContentView(R.layout.activity_main);
+        //removeAllFromRealm();
         createViews();
-        testGetSymbol();
-        testGetQuote();
-    }
 
-    public void testGetSymbol() {
-        RestAdapter restAdapter = new RestAdapter.Builder().setEndpoint("http://dev.markitondemand.com/Api/v2").build();
-        StockAPI stockapi = restAdapter.create(StockAPI.class);
+        SwipeableRecyclerViewTouchListener swipeTouchListener =
+                new SwipeableRecyclerViewTouchListener(rv,
+                        new SwipeableRecyclerViewTouchListener.SwipeListener() {
+                            @Override
+                            public boolean canSwipe(int position) {
+                                return true;
+                            }
 
-        stockapi.getStockSymbol("google", new Callback<Company[]>() {
-            @Override
-            public void success(Company[] company, Response response) {
-                Log.i("TEST", company[0].getName() + " " + company[0].getSymbol());
-            }
+                            @Override
+                            public void onDismissedBySwipeLeft(RecyclerView aRecyclerView, int[] reverseSortPostions) {
+                                for (int position : reverseSortPostions) {
+                                    removeStockFromRealm(companies.get(position));
+                                    companies.remove(position);
+                                    adapter.notifyItemRemoved(position);
+                                }
+                                adapter.notifyDataSetChanged();
+                            }
 
-            @Override
-            public void failure(RetrofitError error) {
-                Log.i("TEST", error.getMessage());
-            }
-        });
-    }
+                            @Override
+                            public void onDismissedBySwipeRight(RecyclerView aRecyclerView, int[] reverseSortPostions) {
+                                for (int position : reverseSortPostions) {
+                                    companies.remove(position);
+                                    adapter.notifyItemRemoved(position);
+                                }
+                                adapter.notifyDataSetChanged();
+                            }
 
-    public void testGetQuote() {
-        RestAdapter restAdapter = new RestAdapter.Builder().setEndpoint("http://dev.markitondemand.com/Api/v2").build();
-        StockAPI stockapi = restAdapter.create(StockAPI.class);
-
-        stockapi.getQuote("goog", new Callback<Quote>() {
-            @Override
-            public void success(Quote quote, Response response) {
-                Log.i("TEST", quote.getName() + " " + quote.getLastPrice());
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                Log.i("TEST", error.getMessage());
-            }
-        });
+                        });
+        rv.addOnItemTouchListener(swipeTouchListener);
     }
 
     public void createViews() {
-        RecyclerView rv = (RecyclerView) findViewById(R.id.recycler_view);
+        rv = (RecyclerView) findViewById(R.id.recycler_view);
         LinearLayoutManager llm = new LinearLayoutManager(this);
         rv.setLayoutManager(llm);
 
@@ -77,16 +85,129 @@ public class MainActivity extends ActionBarActivity {
 
         initializeData();
 
-        RVAdapter adapter = new RVAdapter(companies);
+        adapter = new RVAdapter(companies);
         rv.setAdapter(adapter);
     }
 
     private void initializeData() {
         //TODO: will later pull from persistent stock list, example data below:
         companies = new ArrayList<>();
-        //companies.add(new Company("GOOG", "Google", "513.89"));
-        //companies.add(new Company("AAPL", "Apple", "212.55"));
-        //companies.add(new Company("NFLX", "Netflix", "89.43"));
+        symbols = new ArrayList<>();
+        Realm realm = Realm.getInstance(this);
+        RealmQuery<Card> query = realm.where(Card.class);
+        RealmResults<Card> results = query.findAll();
+        for (Card c : results) {
+            retrieveQuote(c.getSymbol());
+        }
+    }
+
+    public void displayAddStockDialog() {
+        AlertDialog.Builder newStock = new AlertDialog.Builder(MainActivity.this);
+        newStock.setTitle("Add a stock:");
+
+        final EditText input = new EditText(MainActivity.this);
+
+        newStock.setView(input);
+        newStock.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                retrieveQuote(input.getText().toString());
+            }
+        });
+        newStock.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        newStock.show();
+    }
+
+    public void retrieveQuote(String aSymbol) {
+        RestAdapter restAdapter = new RestAdapter.Builder().setEndpoint("http://dev.markitondemand.com/Api/v2").build();
+        StockAPI stockapi = restAdapter.create(StockAPI.class);
+
+        stockapi.getQuote(aSymbol, new Callback<Quote>() {
+            @Override
+            public void success(Quote quote, Response response) {
+                Log.i("TEST", quote.getName() + " " + quote.getLastPrice());
+                addStockCard(quote);
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                Log.i("TEST", error.getMessage());
+            }
+        });
+    }
+
+    public void addStockCard(Quote aQuote) {
+        //TODO: change realm to store only strings
+        if (isNewQuote(aQuote)) {
+            addStockToRealm(aQuote);
+            boolean isPositiveChange = aQuote.getChangePercent() > 0.0;
+            Card newCard = new Card(aQuote.getSymbol(), aQuote.getName(), aQuote.getLastPrice(), isPositiveChange, aQuote.getChangePercent());
+            symbols.add(aQuote.getSymbol());
+            companies.add(newCard);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    public boolean isNewQuote(Quote aQuote) {
+        boolean isNew = true;
+        Realm realm = Realm.getInstance(this);
+        RealmQuery<Card> query = realm.where(Card.class);
+        RealmResults<Card> results = query.findAll();
+        realm.beginTransaction();
+        for (int i = 0; i < results.size(); i++) {
+            if (aQuote.getSymbol().toUpperCase().equals(results.get(i).getSymbol().toUpperCase()))
+                isNew = false;
+        }
+        realm.commitTransaction();
+        return isNew;
+    }
+
+    public void addStockToRealm(Quote aQuote) {
+        Realm realm = Realm.getInstance(this);
+        realm.beginTransaction();
+        Card card = realm.createObject(Card.class);
+        card.setSymbol(aQuote.getSymbol());
+        card.setCompanyName(aQuote.getName());
+        card.setLastPrice(aQuote.getLastPrice());
+        card.setPositiveChange(aQuote.getChangePercent() > 0.0);
+        card.setChangePercent(aQuote.getChangePercent());
+        realm.commitTransaction();
+
+        RealmResults<Card> result = realm.where(Card.class).findAll();
+        Log.i("TEST", result.toString());
+    }
+
+    public void removeStockFromRealm(Card card) {
+        Realm realm = Realm.getInstance(this);
+        RealmQuery<Card> query = realm.where(Card.class);
+        RealmResults<Card> results = query.findAll();
+        realm.beginTransaction();
+        for (int i = 0; i < results.size(); i++) {
+            if (card.getSymbol().toUpperCase().equals(results.get(i).getSymbol().toUpperCase()))
+                results.remove(i);
+        }
+        realm.commitTransaction();
+
+        RealmResults<Card> logging = realm.where(Card.class).findAll();
+        Log.i("TEST", logging.toString());
+    }
+
+    public void removeAllFromRealm() {
+         Realm realm = Realm.getInstance(this);
+         RealmQuery<Card> query = realm.where(Card.class);
+         RealmResults<Card> results = query.findAll();
+         realm.beginTransaction();
+         results.clear();
+         realm.commitTransaction();
+    }
+
+    public void refreshQuotes() {
+
     }
 
     @Override
@@ -104,7 +225,15 @@ public class MainActivity extends ActionBarActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+
+        if (id == R.id.action_add_stock) {
+            //TODO: change this to the search dialog in the action bar
+            displayAddStockDialog();
+            return true;
+        } else if (id == R.id.action_refresh_quotes) {
+            refreshQuotes();
+            return true;
+        } else if (id == R.id.action_settings) {
             return true;
         }
 

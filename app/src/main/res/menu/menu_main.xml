@@ -3,19 +3,19 @@
 
     <item
         android:id="@+id/action_add_stock"
-        app:showAsAction="always"
+        app:showAsAction="ifRoom"
         android:title="Add Stock"
         android:icon="@drawable/ic_action_add_stock" />
 
     <item
         android:id="@+id/action_refresh_quotes"
-        app:showAsAction="always"
+        app:showAsAction="ifRoom"
         android:title="Refresh Quotes"
         android:icon="@drawable/ic_action_refresh_quotes" />
 
     <item
         android:id="@+id/action_settings"
-        app:showAsAction="always"
+        app:showAsAction="ifRoom"
         android:title="Settings"
         android:icon="@drawable/ic_action_settings" />
 
