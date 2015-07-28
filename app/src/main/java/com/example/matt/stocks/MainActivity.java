@@ -13,7 +13,6 @@ import android.widget.EditText;
 
 import com.example.matt.stocks.API.StockAPI;
 import com.example.matt.stocks.Model.Quote;
-import com.example.matt.stocks.Model.Company;
 import com.github.brnunes.swipeablerecyclerview.SwipeableRecyclerViewTouchListener;
 
 import java.util.ArrayList;
@@ -34,17 +33,16 @@ public class MainActivity extends ActionBarActivity {
 
     RecyclerView rv;
     RVAdapter adapter;
-    Quote theQuote;
-    Card theCard;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //Thread.setDefaultExceptionHandler(new ExceptionHandler());
         setContentView(R.layout.activity_main);
-        removeAllFromRealm();
+        //removeAllFromRealm();
         companies = new ArrayList<>();
         createViews();
+
         initializePersistentData();
 
         SwipeableRecyclerViewTouchListener swipeTouchListener =
@@ -60,9 +58,6 @@ public class MainActivity extends ActionBarActivity {
                                                                int[] reverseSortPositions) {
                                 for (int position : reverseSortPositions) {
                                     removeStockFromRealm(companies.get(position));
-                                    companies.remove(position);
-                                    Log.i("TEST", companies.toString());
-                                    adapter.notifyItemRemoved(position);
                                 }
                                 adapter.notifyDataSetChanged();
                             }
@@ -95,17 +90,14 @@ public class MainActivity extends ActionBarActivity {
         Realm realm = Realm.getInstance(this);
         RealmQuery<Card> query = realm.where(Card.class);
         RealmResults<Card> results = query.findAll();
-        if (results.size() > 0) {
+        if (results.size() != 0) {
             for (Card c : results) {
-                addCard(c);
+                companies.add(c);
+                retrieveQuote(c.getSymbol());
             }
+            adapter.notifyDataSetChanged();
+            //updateQuotes();
         }
-        updateQuotes();
-    }
-
-    public void addCard(Card c) {
-        companies.add(c);
-        adapter.notifyDataSetChanged();
     }
 
     public void displayAddStockDialog() {
@@ -119,7 +111,7 @@ public class MainActivity extends ActionBarActivity {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 String symbol = input.getText().toString();
-                initializeNewCard(symbol);
+                retrieveQuote(symbol);
             }
         });
         newStock.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -131,17 +123,20 @@ public class MainActivity extends ActionBarActivity {
         newStock.show();
     }
 
-    public Quote retrieveQuote(String aSymbol) {
+    public void retrieveQuote(String aSymbol) {
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setEndpoint(API).build();
         StockAPI stockapi = restAdapter.create(StockAPI.class);
-        theQuote = new Quote();
 
         stockapi.getQuote(aSymbol, new Callback<Quote>() {
             @Override
             public void success(Quote quote, Response response) {
                 Log.i("TEST", quote.getName() + ".");
-                theQuote = quote;
+                if (isNewStock(quote.getSymbol())) {
+                    initializeNewCard(quote);
+                } else {
+                    updateQuote(quote);
+                }
             }
 
             @Override
@@ -149,20 +144,34 @@ public class MainActivity extends ActionBarActivity {
                 Log.i("TEST", error.getMessage());
             }
         });
-        return theQuote;
     }
 
-    public Card retrieveCompanyInfo(String aSymbol) {
+    public void updateQuote(Quote aQuote) {
+        for (Card c : companies) {
+            if (c.getSymbol().equals(aQuote.getSymbol())) {
+                Realm realm = Realm.getInstance(this);
+                realm.beginTransaction();
+                c.setLastPrice(aQuote.getLastPrice());
+                c.setPositiveChange(aQuote.getChangePercent() > 0.0);
+                c.setChangePercent(aQuote.getChangePercent());
+                realm.commitTransaction();
+            }
+        }
+        adapter.notifyDataSetChanged();
+    }
+/**
+    public void retrieveCompanyInfo(String aSymbol) {
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setEndpoint(API).build();
         StockAPI stockapi = restAdapter.create(StockAPI.class);
-        theCard = new Card();
 
         stockapi.getStockSymbol(aSymbol, new Callback<Company[]>() {
             @Override
             public void success(Company[] company, Response response) {
                 theCard.setSymbol(company[0].getSymbol());
                 theCard.setCompanyName(company[0].getName());
+
+                Log.i("TEST", theCard.getSymbol() + " .");
             }
 
             @Override
@@ -170,39 +179,37 @@ public class MainActivity extends ActionBarActivity {
                 Log.i("TEST", error.getMessage());
             }
         });
-        return theCard;
     }
-
-    public void initializeNewCard(String aSymbol) {
-        Card newCard = retrieveCompanyInfo(aSymbol);
-
-        Log.i("TEST", newCard.getSymbol() + " .");
-        if (isNewStock(newCard)) {
-            addStockToRealm(newCard);
-            addCard(newCard);
-            updateQuotes();
-        }
+**/
+    public void initializeNewCard(Quote aQuote) {
+        Log.i("TEST", aQuote.getSymbol() + " .");
+        Card newCard = new Card(aQuote.getSymbol(), aQuote.getName(), aQuote.getLastPrice(),
+                aQuote.getChangePercent() > 0.0, aQuote.getChangePercent());
+        companies.add(newCard);
+        adapter.notifyDataSetChanged();
+        addStockToRealm(newCard);
+        //updateQuotes();
     }
-
+/**
     public void updateQuotes() {
         for (Card c : companies) {
-            Quote quote = retrieveQuote(c.getSymbol());
-            c.setLastPrice(quote.getLastPrice());
-            c.setPositiveChange(quote.getChangePercent() > 0.0);
-            c.setChangePercent(quote.getChangePercent());
+            Log.i("TEST", c.getSymbol() + " .");
+            retrieveQuote(c.getSymbol());
+            c.setLastPrice(theQuote.getLastPrice());
+            c.setPositiveChange(theQuote.getChangePercent() > 0.0);
+            c.setChangePercent(theQuote.getChangePercent());
         }
         adapter.notifyDataSetChanged();
     }
-
-    public boolean isNewStock(Card aCard) {
+**/
+    public boolean isNewStock(String aSymbol) {
         boolean isNew = true;
         Realm realm = Realm.getInstance(this);
         RealmQuery<Card> query = realm.where(Card.class);
         RealmResults<Card> results = query.findAll();
         realm.beginTransaction();
         for (int i = 0; i < results.size(); i++) {
-            if (aCard.getSymbol().toUpperCase().equals(
-                    results.get(i).getSymbol().toUpperCase()))
+            if (aSymbol.equals(results.get(i).getSymbol().toUpperCase()))
                 isNew = false;
         }
         realm.commitTransaction();
@@ -215,6 +222,9 @@ public class MainActivity extends ActionBarActivity {
         Card card = realm.createObject(Card.class);
         card.setSymbol(aCard.getSymbol());
         card.setCompanyName(aCard.getCompanyName());
+        card.setLastPrice(aCard.getLastPrice());
+        card.setPositiveChange(aCard.getChangePercent() > 0.0);
+        card.setChangePercent(aCard.getChangePercent());
         realm.commitTransaction();
 
         logRealm();
@@ -227,10 +237,15 @@ public class MainActivity extends ActionBarActivity {
         realm.beginTransaction();
         for (int i = 0; i < results.size(); i++) {
             if (aCard.getSymbol().toUpperCase().equals(
-                    results.get(i).getSymbol().toUpperCase()))
+                    results.get(i).getSymbol().toUpperCase())) {
                 results.remove(i);
+                companies.remove(i);
+                //Log.i("TEST", companies.toString());
+                adapter.notifyItemRemoved(i);
+            }
         }
         realm.commitTransaction();
+
         logRealm();
     }
 
@@ -247,7 +262,7 @@ public class MainActivity extends ActionBarActivity {
         Realm realm = Realm.getInstance(this);
         RealmQuery<Card> query = realm.where(Card.class);
         RealmResults<Card> results = query.findAll();
-        Log.i("Test", results.toString());
+        Log.i("TEST", results.toString());
     }
 
     @Override
@@ -264,7 +279,8 @@ public class MainActivity extends ActionBarActivity {
             displayAddStockDialog();
             return true;
         } else if (id == R.id.action_refresh_quotes) {
-            updateQuotes();
+            companies.clear();
+            initializePersistentData();
             return true;
         } else if (id == R.id.action_settings) {
             removeAllFromRealm();
@@ -272,4 +288,5 @@ public class MainActivity extends ActionBarActivity {
         }
         return super.onOptionsItemSelected(item);
     }
+
 }

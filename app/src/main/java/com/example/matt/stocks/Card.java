@@ -15,6 +15,9 @@ public class Card extends RealmObject {
     public Card (String aSymbol, String aCompanyName) {
         this.symbol = aSymbol;
         this.companyName = aCompanyName;
+        this.lastPrice = 0.0;
+        this.positiveChange = true;
+        this.changePercent = 0.0;
     }
 
     public Card(String aSymbol, String aCompanyName, double aLastPrice, boolean aPositiveChange, double aChangePercent) {
