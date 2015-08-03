@@ -3,18 +3,8 @@ package com.example.matt.stocks;
 import android.content.Intent;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-
-import com.example.matt.stocks.API.NewsAPI;
-import com.example.matt.stocks.Model.News;
-
-import retrofit.Callback;
-import retrofit.RestAdapter;
-import retrofit.RetrofitError;
-import retrofit.client.Response;
-import retrofit.converter.SimpleXMLConverter;
 
 public class DetailedQuoteActivity extends ActionBarActivity {
 
@@ -29,9 +19,9 @@ public class DetailedQuoteActivity extends ActionBarActivity {
         Intent intent = getIntent();
         symbol = intent.getStringExtra("symbol");
 
-        retrieveNews();
+        //retrieveNews();
     }
-
+/**
     public void retrieveNews() {
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setEndpoint(API).setConverter(new SimpleXMLConverter()).build();
@@ -49,7 +39,7 @@ public class DetailedQuoteActivity extends ActionBarActivity {
             }
         });
     }
-
+**/
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
