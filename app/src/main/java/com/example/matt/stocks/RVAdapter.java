@@ -1,5 +1,6 @@
 package com.example.matt.stocks;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
@@ -34,6 +35,14 @@ public class RVAdapter extends RecyclerView.Adapter<RVAdapter.CompanyViewHolder>
             currentValue = (TextView) itemView.findViewById(R.id.quote_textview);
             percentChange = (TextView) itemView.findViewById(R.id.change_textview);
             changeIndicator = (ImageView) itemView.findViewById(R.id.arrow_imageview);
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(v.getContext(), DetailedQuoteActivity.class);
+                    intent.putExtra("symbol", sid.getText().toString());
+                    v.getContext().startActivity(intent);
+                }
+            });
         }
     }
 
