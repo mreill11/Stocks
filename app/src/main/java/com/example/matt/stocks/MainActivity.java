@@ -2,8 +2,8 @@ package com.example.matt.stocks;
 
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -26,7 +26,7 @@ import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends AppCompatActivity {
 
     private List<Card> companies;
     final String API = "http://dev.markitondemand.com/Api/v2";
@@ -96,7 +96,6 @@ public class MainActivity extends ActionBarActivity {
                 retrieveQuote(c.getSymbol());
             }
             adapter.notifyDataSetChanged();
-            //updateQuotes();
         }
     }
 
@@ -159,28 +158,7 @@ public class MainActivity extends ActionBarActivity {
         }
         adapter.notifyDataSetChanged();
     }
-/**
-    public void retrieveCompanyInfo(String aSymbol) {
-        RestAdapter restAdapter = new RestAdapter.Builder()
-                .setEndpoint(API).build();
-        StockAPI stockapi = restAdapter.create(StockAPI.class);
 
-        stockapi.getStockSymbol(aSymbol, new Callback<Company[]>() {
-            @Override
-            public void success(Company[] company, Response response) {
-                theCard.setSymbol(company[0].getSymbol());
-                theCard.setCompanyName(company[0].getName());
-
-                Log.i("TEST", theCard.getSymbol() + " .");
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                Log.i("TEST", error.getMessage());
-            }
-        });
-    }
-**/
     public void initializeNewCard(Quote aQuote) {
         Log.i("TEST", aQuote.getSymbol() + " .");
         Card newCard = new Card(aQuote.getSymbol(), aQuote.getName(), aQuote.getLastPrice(),
@@ -190,18 +168,7 @@ public class MainActivity extends ActionBarActivity {
         addStockToRealm(newCard);
         //updateQuotes();
     }
-/**
-    public void updateQuotes() {
-        for (Card c : companies) {
-            Log.i("TEST", c.getSymbol() + " .");
-            retrieveQuote(c.getSymbol());
-            c.setLastPrice(theQuote.getLastPrice());
-            c.setPositiveChange(theQuote.getChangePercent() > 0.0);
-            c.setChangePercent(theQuote.getChangePercent());
-        }
-        adapter.notifyDataSetChanged();
-    }
-**/
+
     public boolean isNewStock(String aSymbol) {
         boolean isNew = true;
         Realm realm = Realm.getInstance(this);

@@ -9,7 +9,6 @@ import android.view.MenuItem;
 public class DetailedQuoteActivity extends ActionBarActivity {
 
     String symbol;
-    String API = "http://feeds.finance.yahoo.com/rss/2.0";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -19,27 +18,8 @@ public class DetailedQuoteActivity extends ActionBarActivity {
         Intent intent = getIntent();
         symbol = intent.getStringExtra("symbol");
 
-        //retrieveNews();
     }
-/**
-    public void retrieveNews() {
-        RestAdapter restAdapter = new RestAdapter.Builder()
-                .setEndpoint(API).setConverter(new SimpleXMLConverter()).build();
-        NewsAPI newsapi = restAdapter.create(NewsAPI.class);
 
-        newsapi.getNews(symbol, new Callback<News>() {
-            @Override
-            public void success(News news, Response response) {
-                Log.i("TEST", news.getCount().toString());
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                Log.i("TEST", error.getMessage());
-            }
-        });
-    }
-**/
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
